@@ -7,7 +7,7 @@ import pandas as pd
 # import tensorflow as tf
 from sklearn.model_selection import train_test_split
 # from sklearn.metrics import mean_squared_error, accuracy_score, confusion_matrix, zero_one_loss
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
 # Start by printing the welcome message
 # globals.printWelcomeMessage()
@@ -16,7 +16,7 @@ from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 # Global paths
 # -------------------------------------------
 
-#dataset_name = ['breastCancer.txt', 'car.txt', 'covtypetx.txt', 'adult.txt', 'adult.arff', 'covtype.arff',
+# dataset_name = ['breastCancer.txt', 'car.txt', 'covtypetx.txt', 'adult.txt', 'adult.arff', 'covtype.arff',
 #                'nursery.arff']
 
 # dataset_name = ['car.arff', 'iris.arff', 'half.arff']
@@ -25,7 +25,9 @@ from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 
 def read_uci(path, ALL_DATA_FOR_DISCRETIZE = False,
                    DISCRETIZE = True,
-                   ONEHOTENCODE = False):
+                   ONEHOTENCODE = False,
+                   scale=True,
+                   verbose=0):
     '''
     read and preprocess .arff format uci data;
     maybe can also process .txt or .csv data.
@@ -53,23 +55,23 @@ def read_uci(path, ALL_DATA_FOR_DISCRETIZE = False,
 
     '''
     if '.arff' in path:
+        if verbose > 1:
+            print(' ************************ ')
+            print('    Arff detected    ')
+            print(' ************************ ')
     
-        print(' ************************ ')
-        print('    Arff detected    ')
-        print(' ************************ ')
-    
-        data, dict1 = arff.read_arff(path)
+        data, dict1 = arff.read_arff(path, verbose)
     
         cat_features = [i for i in data.columns.values if i in dict1.keys()]
         num_features = [i for i in data.columns.values if i not in dict1.keys()]
     
     elif '.txt' in path:
+        if verbose > 1:
+            print(' ************************ ')
+            print('    txt detected          ')
+            print(' ************************ ')
     
-        print(' ************************ ')
-        print('    txt detected          ')
-        print(' ************************ ')
-    
-        data, dict1 = arff.read_txt(path)
+        data, dict1 = arff.read_txt(path, verbose)
     
         cat_features = [i for i in data.columns.values if i in dict1.keys()]
         num_features = [i for i in data.columns.values if i not in dict1.keys()]
@@ -93,7 +95,8 @@ def read_uci(path, ALL_DATA_FOR_DISCRETIZE = False,
     # --------------------------------------------------------------------------
 
     N, n = data.shape
-    print('Loaded Data of Size = {}, Dimensions = {}'.format(N, n))
+    if verbose > 1:
+        print('Loaded Data of Size = {}, Dimensions = {}'.format(N, n))
     
     # -------------------------------------------------------------------------------------------------------------------
     # Sanity checking
@@ -103,8 +106,8 @@ def read_uci(path, ALL_DATA_FOR_DISCRETIZE = False,
     
     feat_set_to_del = [i for i in data.columns.values if
                        (len(np.unique(data[i])) == 1 or len(np.unique(data[i])) == data.shape[0])]
-    
-    print('Dropping these features {} after loading:'.format(feat_set_to_del))
+    if verbose > 1:
+        print('Dropping these features {} after loading:'.format(feat_set_to_del))
     
     data = data.drop(feat_set_to_del, axis=1)
     
@@ -114,8 +117,8 @@ def read_uci(path, ALL_DATA_FOR_DISCRETIZE = False,
             dict1.pop(i)
         if i in num_features:
             num_features.remove(i)
-    
-    print('After cleansing -- Num Features = {}, Cat Features = {}'.format(len(num_features), len(cat_features)))
+    if verbose > 0:
+        print('After cleansing -- Num Features = {}, Cat Features = {}'.format(len(num_features), len(cat_features)))
     
     # Dividing data into training and testing:
     feats_sel = [data.columns.values[i] for i in range(0,len(data.columns.values) - 1)]
@@ -137,7 +140,14 @@ def read_uci(path, ALL_DATA_FOR_DISCRETIZE = False,
         params_disc = {'num_bins': 10, 'method': 'EF', 'feats_sel': num_features, 'dict': dict1, 'labels': labels_train,
                        'treat_missing_distinct': True}
         data_train_disc, data_test_disc, dict, cutPoints = disc.discretize(data_train, data_test, **params_disc)
-        
+        if scale and not ONEHOTENCODE:
+            _data = pd.concat([data_train_disc, data_test_disc])
+            _data = StandardScaler().fit_transform(_data)
+            train_len = len(data_train_disc)
+            data_train_disc = _data[:train_len]
+            data_test_disc = _data[train_len:]
+
+
         if ONEHOTENCODE:        
             # -------------------------------------------------------------------------------------------------------------------
             # One-hot-Encoding

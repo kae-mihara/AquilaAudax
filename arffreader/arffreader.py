@@ -7,7 +7,7 @@ import pandas as pd
 #   Missing values in categorical data will be replaced by '?'
 #
 # --------------------------------------------------------------------------------------------------------------
-def read_txt(path):
+def read_txt(path, verbose):
 
     data = pd.read_csv(path, header=None, skiprows=2)
 
@@ -18,11 +18,13 @@ def read_txt(path):
                 header = header.strip('\n').split(',')
                 header = [x.strip(' ') for x in header]
                 numDims = header.__len__()
-                print("No. of Attributes = " + str(numDims) + "\nHeader = " + str(header))
+                if verbose > 1:
+                    print("No. of Attributes = " + str(numDims) + "\nHeader = " + str(header))
             elif line.find('Name') != -1:
                 temp, datasetName = line.split(':')
                 datasetName = datasetName.replace(' ','').replace('\n','')
-                print("DataSet name = " + datasetName)
+                if verbose > 1:
+                    print("DataSet name = " + datasetName)
             else:
                 pass
 
@@ -42,11 +44,12 @@ def read_txt(path):
     for i in cat_features:
 
         name = i
-        print('\t Processing (discrete) feature {}'.format(name))
+        if verbose > 1:
+            print('\t Processing (discrete) feature {}'.format(name))
 
         if len(np.where(data[name].isin(['?']))[0]) > 0:
-
-            print('\t\tFound missing value')
+            if verbose > 1:
+                print('\t\tFound missing value')
             t = tuple([i for i in range(0, len(meta[name]) + 1)])
             d = meta[name] + ('?',)
 
@@ -75,13 +78,13 @@ def read_txt(path):
 #   Missing values in categorical data will be replaced by '?'
 #
 # --------------------------------------------------------------------------------------------------------------
-def read_arff(path):
+def read_arff(path, verbose):
 
     data, meta = arff.loadarff(path)
 
     mDict = meta.__dict__['_attributes']
-
-    print('(arffreader.py) Loaded data successfully from path: ' + path)
+    if verbose > 1:
+        print('(arffreader.py) Loaded data successfully from path: ' + path)
 
     attNames = meta.names()
     attTypes = meta.types()
@@ -101,13 +104,14 @@ def read_arff(path):
     for i in discRows:
 
         name = attNames[i]
-        print('\t Processing (discrete) feature {}'.format(name))
+        if verbose > 1:
+            print('\t Processing (discrete) feature {}'.format(name))
 
         pdata[name] = pdata[name].str.decode("utf-8")
 
         if len(np.where(pdata[name].isin(['?']))[0]) > 0:
-
-            print('\t\tFound missing value')
+            if verbose > 1:
+                print('\t\tFound missing value')
             t = tuple([i for i in range(0, len(meta[name][1]) + 1)])
             d = meta[name][1] + ('?',)
 
